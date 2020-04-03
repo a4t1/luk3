@@ -1,0 +1,25 @@
+{
+  "name": "@a4t1/luk3",
+  "version": "1.0.0",
+  "description": "Toolchain for A4T1 packs management for MOHAA",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/a4t1/luk3.git"
+  },
+  "keywords": [
+    "mohaa",
+    "a4t1",
+    "pk3",
+    "tool"
+  ],
+  "author": "Luke Alzagesi <lucablackdragon@hotmail.com>",
+  "license": "UNLICENSED",
+  "bugs": {
+    "url": "https://github.com/a4t1/luk3/issues"
+  },
+  "homepage": "https://github.com/a4t1/luk3#readme"
+}
