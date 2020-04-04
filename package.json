@@ -1,10 +1,12 @@
 {
   "name": "@a4t1/luk3",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Toolchain for A4T1 packs management for MOHAA",
   "main": "index.js",
+  "bin": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "pack": "npx pkg . --output dist\\luke.exe --targets node12-win"
   },
   "repository": {
     "type": "git",
@@ -25,6 +27,10 @@
   "dependencies": {
     "hasha": "^5.2.0",
     "pacote": "^11.1.4",
+    "prompts": "^2.3.2",
     "yargs": "^15.3.1"
+  },
+  "devDependencies": {
+    "pkg": "^4.4.5"
   }
 }
