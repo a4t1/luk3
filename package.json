@@ -26,6 +26,7 @@
   "homepage": "https://github.com/a4t1/luk3#readme",
   "dependencies": {
     "hasha": "^5.2.0",
+    "ora": "^4.0.3",
     "pacote": "^11.1.4",
     "prompts": "^2.3.2",
     "yargs": "^15.3.1"

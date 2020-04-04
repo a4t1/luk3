@@ -9,6 +9,7 @@ const node = {
 const hasha = require('hasha')
 const pacote = require('pacote')
 const prompts = require('prompts')
+const ora = require('ora')
 
 require('yargs')
   .scriptName('luk3')
@@ -45,6 +46,8 @@ async function bootstrap({ token, path, force }) {
 
   try {
 
+    console.log()
+
     const cwd = path && node.path.isAbsolute(path)
       ? path
       : node.path.join(node.process.cwd(), path)
@@ -77,10 +80,12 @@ async function bootstrap({ token, path, force }) {
 
     const url = await pacote.resolve(`@a4t1/luk3-config@latest`, pacoteOptions)
 
-    console.log(`Download configurazione da ${pacoteOptions.registry}...`)
+    const spinner = ora(`Download configurazione da ${pacoteOptions.registry}`).start()
 
     const downloadFolder = node.path.join(a4t1Folder, 'luk3-config')
     await pacote.extract(url, downloadFolder, pacoteOptions)
+
+    spinner.succeed()
 
     const configuration = require(node.path.join(downloadFolder, 'config.js'))
 
@@ -121,65 +126,86 @@ async function confirmExit() {
 
 async function bootstrapBundle({ name: bundleName, targets, pak3ts }, cwd, pacoteOptions) {
 
-  const a4t1Folder = node.path.join(cwd, '.a4t1/')
+  console.log()
+  const mainSpinner = ora(`Verifica bundle ${bundleName}`).start()
+  console.log()
 
-  console.log(`
-Verifica bundle ${bundleName}
-`)
+  try {
 
-  const targetsToUpdate = []
+    const a4t1Folder = node.path.join(cwd, '.a4t1/')
 
-  for (const target of targets) {
+    const verifica = ora('Verifica dei pacchetti in corso').start()
 
-    const targetPath = node.path.join(cwd, target)
+    const targetsToUpdate = []
 
-    for (const { name, hash } of pak3ts) {
+    for (const target of targets) {
 
-      const pak3tPath = node.path.join(targetPath, name)
+      const targetPath = node.path.join(cwd, target)
 
-      if (node.fs.existsSync(pak3tPath)) {
-        const localHash = hasha.fromFileSync(pak3tPath, { algorithm: 'md5' })
-        if (localHash == hash) continue
+      for (const { name, hash } of pak3ts) {
+
+        const pak3tPath = node.path.join(targetPath, name)
+
+        if (node.fs.existsSync(pak3tPath)) {
+          const localHash = hasha.fromFileSync(pak3tPath, { algorithm: 'md5' })
+          if (localHash == hash) continue
+        }
+
+        targetsToUpdate.push({
+          targetPath,
+          pak3t: name
+        })
+
       }
 
-      targetsToUpdate.push({
-        targetPath,
-        pak3t: name
-      })
-
     }
 
-  }
+    if (targetsToUpdate.length > 0) {
 
-  if (targetsToUpdate.length > 0) {
+      verifica.warn(`Necessario l'aggiornamento dei seguenti pacchetti:`)
+      for (const tup of targetsToUpdate) {
+        console.log(`- ${node.path.join(node.path.relative(cwd, tup.targetPath), tup.pak3t)}`)
+      }
 
-    console.log(`Necessario l'aggiornamento dei seguenti pacchetti:`)
-    for (const tup of targetsToUpdate) {
-      console.log(`- ${node.path.join(node.path.relative(cwd, tup.targetPath), tup.pak3t)}`)
-    }
+      const url = await pacote.resolve(`@a4t1/${bundleName}@latest`, pacoteOptions)
 
-    const url = await pacote.resolve(`@a4t1/${bundleName}@latest`, pacoteOptions)
+      const spinner = ora(`Download ${bundleName} da ${pacoteOptions.registry}`).start()
 
-    console.log(`Download ${bundleName} da ${pacoteOptions.registry}...`)
+      const downloadFolder = node.path.join(a4t1Folder, bundleName)
+      await pacote.extract(url, downloadFolder, pacoteOptions)
 
-    const downloadFolder = node.path.join(a4t1Folder, bundleName)
-    await pacote.extract(url, downloadFolder, pacoteOptions)
+      spinner.succeed()
 
-    for (const { pak3t, targetPath } of targetsToUpdate) {
-
-      const downloadedPak3t = node.path.join(downloadFolder, 'dist', pak3t)
-
-      if (node.fs.existsSync(downloadedPak3t)) {
+      for (const { pak3t, targetPath } of targetsToUpdate) {
 
         const destinationPath = node.path.join(targetPath, pak3t)
-        node.fs.copyFileSync(downloadedPak3t, destinationPath)
-        console.log(`Pacchetto ${node.path.relative(cwd, destinationPath)} aggiornato`)
-      }
 
+        const update = ora(`Aggiornamento ${node.path.relative(cwd, destinationPath)}`)
+
+        const downloadedPak3t = node.path.join(downloadFolder, 'dist', pak3t)
+
+        if (node.fs.existsSync(downloadedPak3t)) {
+          node.fs.copyFileSync(downloadedPak3t, destinationPath)
+          update.succeed(`Pacchetto ${node.path.relative(cwd, destinationPath)} aggiornato`)
+        }
+        else {
+          update.fail(`Pacchetto ${node.path.relative(cwd, destinationPath)} non trovato`)
+        }
+
+      }
     }
+    else {
+      verifica.succeed('Nessun pacchetto da aggiornare')
+    }
+
+    mainSpinner.succeed(`Verifica bundle ${bundleName} completata con successo`)
+
+  }
+  catch (err) {
+    mainSpinner.fail(`Verifica bundle ${bundleName} fallita`)
+    console.error(err)
   }
 
-  console.log(`Tutti i pacchetti del bundle ${bundleName} sono aggiornati`)
   return 0
 
 }
