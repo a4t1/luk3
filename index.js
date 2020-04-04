@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+const TOKEN = '60f3e2f89f17ab7833f5877c4dc05cf1187ccba2'
+
 // require modules
 const node = {
   fs: require('fs'),
@@ -63,73 +65,83 @@ Esegui il comando nella cartella principale di MOHAA o usa l'opzione --path`)
     ]
   }
 
-  await bootstrapMainFolder(configuration.bundles.filter(({ targets }) => targets.includes('main')), node.path.join(cwd, 'main'))
-  await bootstrapMainFolder(configuration.bundles.filter(({ targets }) => targets.includes('mainta')), node.path.join(cwd, 'mainta'))
-  await bootstrapMainFolder(configuration.bundles.filter(({ targets }) => targets.includes('maintt')), node.path.join(cwd, 'maintt'))
+  for (const bundle of configuration.bundles) {
+    await bootstrapBundle(bundle, cwd)
+  }
 
   console.log('Operazione completata')
+
+  node.process.exit(0)
 
   return 0
 
 }
 
-async function bootstrapMainFolder(bundles, main) {
+async function bootstrapBundle({ name: bundleName, targets, pak3ts }, cwd) {
 
-  console.log(`Configurazione cartella ${main}`)
+  console.log(`Verifica bundle ${bundleName}`)
 
-  const a4t1Folder = node.path.join(main, '../', '.a4t1/')
+  const targetsToUpdate = []
 
-  const pacoteOptions = {
-    registry: 'https://npm.pkg.github.com',
-    token: '7409f1ecf4df395b63b97d6c62f0f1f6b01f238f',
-    cache: node.path.join(a4t1Folder, 'cache'),
-    preferOffline: true,
-  }
+  for (const target of targets) {
 
-  if (!node.fs.existsSync(a4t1Folder)) {
-    node.fs.mkdirSync(a4t1Folder)
-  }
-
-  for (const { name: bundleName, pak3ts } of bundles) {
+    const targetPath = node.path.join(cwd, target)
 
     for (const { name, hash } of pak3ts) {
 
-      const pak3tPath = node.path.join(main, name)
+      const pak3tPath = node.path.join(targetPath, name)
 
       if (node.fs.existsSync(pak3tPath)) {
-        const localHash = await hasha.fromFile(pak3tPath, { algorithm: 'md5' })
-        console.log(`Confronto hash ${name}:`)
-        console.log(hash)
-        console.log(localHash)
-        if (hash == localHash) {
-          console.log(`Pak3t ${name} aggiornato`)
-          continue
-        }
-        else {
-          console.log(`Necessario aggiornamento pak3t ${name}`)          
-        }
-      }
-      else {
-        console.log(`Pak3t ${name} non trovato`)
+        const localHash = hasha.fromFileSync(pak3tPath, { algorithm: 'md5' })
+        if (localHash == hash) continue
       }
 
-      const url = await pacote.resolve(`@a4t1/${bundleName}@latest`, pacoteOptions)
-
-      console.log(`Download ${bundleName} da ${url}...`)
-
-      const downloadFolder = node.path.join(a4t1Folder, bundleName)
-      await pacote.extract(url, downloadFolder, pacoteOptions)
-
-      const downloadedPak3t = node.path.join(downloadFolder, 'dist', name)
-
-      if (node.fs.existsSync(downloadedPak3t)) {
-        node.fs.copyFileSync(downloadedPak3t, node.path.join(main, name))
-      }
+      targetsToUpdate.push({
+        targetPath,
+        pak3t: name
+      })
 
     }
 
   }
 
+  if (targetsToUpdate.length > 0) {
+
+    console.log(`Necessario l'aggiornamento dei seguenti pacchetti:`)
+    for (const tup of targetsToUpdate) {
+      console.log(`- ${node.path.join(node.path.relative(cwd, tup.targetPath), tup.pak3t)}`)
+    }
+
+    const a4t1Folder = node.path.join(cwd, '.a4t1/')
+
+    const pacoteOptions = {
+      registry: 'https://npm.pkg.github.com/',
+      token: TOKEN,
+      cache: node.path.join(a4t1Folder, 'cache'),
+      preferOffline: true,
+    }
+
+    const url = await pacote.resolve(`@a4t1/${bundleName}@latest`, pacoteOptions)
+
+    console.log(`Download ${bundleName} da ${pacoteOptions.registry}...`)
+
+    const downloadFolder = node.path.join(a4t1Folder, bundleName)
+    await pacote.extract(url, downloadFolder, pacoteOptions)
+
+    for (const { pak3t, targetPath } of targetsToUpdate) {
+
+      const downloadedPak3t = node.path.join(downloadFolder, 'dist', pak3t)
+
+      if (node.fs.existsSync(downloadedPak3t)) {
+        node.fs.copyFileSync(downloadedPak3t, node.path.join(targetPath, pak3t))
+
+        console.log(`Pacchetto ${pak3t} aggiornato`)
+      }
+
+    }
+  }
+
+  console.log(`Tutti i pacchetti del bundle ${bundleName} sono aggiornati`)
   return 0
 
 }
