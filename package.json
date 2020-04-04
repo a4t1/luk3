@@ -1,6 +1,6 @@
 {
   "name": "@a4t1/luk3",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Toolchain for A4T1 packs management for MOHAA",
   "main": "index.js",
   "scripts": {

@@ -1,7 +1,5 @@
 #!/usr/bin/env node
 
-const TOKEN = '60f3e2f89f17ab7833f5877c4dc05cf1187ccba2'
-
 // require modules
 const node = {
   fs: require('fs'),
@@ -16,6 +14,13 @@ require('yargs')
   .usage('$0 <cmd> [args]')
   .command(['$0', 'bootstrap'], 'Aggiorna e ripristina i pacchetti A4T1', (yargs) => {
     yargs
+      .option('token', {
+        alias: 't',
+        demandOption: false,
+        default: undefined,
+        describe: `Token di autenticazione`,
+        type: 'string'
+      })
       .option('path', {
         alias: 'p',
         demandOption: false,
@@ -35,11 +40,30 @@ require('yargs')
   .help()
   .argv
 
-async function bootstrap({ path, force }) {
+async function bootstrap({ token, path, force }) {
 
   const cwd = path && node.path.isAbsolute(path)
     ? path
     : node.path.join(node.process.cwd(), path)
+
+  const a4t1Folder = node.path.join(cwd, '.a4t1/')
+
+  let authToken = undefined
+  try {
+    authToken = token || node.fs.readFileSync(node.path.join(cwd, 'LUK3_TOK3N'), { encoding: 'utf8' })
+  }
+  catch (err) {
+    throw new Error(`Token di autenticazione non disponibile!
+Assicurarsi di avere copiato il file LUK3_TOK3N nella cartella principale di
+MOHAA, oppure utilizzare l'opzione --token`)
+  }
+
+  const pacoteOptions = {
+    registry: 'https://npm.pkg.github.com/',
+    token: authToken,
+    cache: node.path.join(a4t1Folder, 'cache'),
+    preferOffline: true,
+  }
 
   if (!node.fs.existsSync(node.path.join(cwd, 'MOHAA.exe'))) {
     if (!force) {
@@ -48,28 +72,21 @@ Esegui il comando nella cartella principale di MOHAA o usa l'opzione --path`)
     }
   }
 
-  // TODO: download configuration
-  const configuration = {
-    version: '1.0.0',
-    bundles: [
-      {
-        name: 'skinpack-01',
-        targets: ['main', 'mainta', 'maintt'],
-        pak3ts: [
-          {
-            name: 'A4T1-skinpack-01.pk3',
-            hash: '490644880834e8c19dca5605cc4fba28',
-          }
-        ]
-      }
-    ]
-  }
+  const url = await pacote.resolve(`@a4t1/luk3-config@latest`, pacoteOptions)
+
+  console.log(`Download configurazione da ${pacoteOptions.registry}...`)
+
+  const downloadFolder = node.path.join(a4t1Folder, 'luk3-config')
+  await pacote.extract(url, downloadFolder, pacoteOptions)
+
+  const configuration = require(node.path.join(downloadFolder, 'config.js'))
 
   for (const bundle of configuration.bundles) {
-    await bootstrapBundle(bundle, cwd)
+    await bootstrapBundle(bundle, cwd, pacoteOptions)
   }
 
-  console.log('Operazione completata')
+  console.log(`
+Operazione completata`)
 
   node.process.exit(0)
 
@@ -77,9 +94,13 @@ Esegui il comando nella cartella principale di MOHAA o usa l'opzione --path`)
 
 }
 
-async function bootstrapBundle({ name: bundleName, targets, pak3ts }, cwd) {
+async function bootstrapBundle({ name: bundleName, targets, pak3ts }, cwd, pacoteOptions) {
 
-  console.log(`Verifica bundle ${bundleName}`)
+  const a4t1Folder = node.path.join(cwd, '.a4t1/')
+
+  console.log(`
+Verifica bundle ${bundleName}
+`)
 
   const targetsToUpdate = []
 
@@ -112,15 +133,6 @@ async function bootstrapBundle({ name: bundleName, targets, pak3ts }, cwd) {
       console.log(`- ${node.path.join(node.path.relative(cwd, tup.targetPath), tup.pak3t)}`)
     }
 
-    const a4t1Folder = node.path.join(cwd, '.a4t1/')
-
-    const pacoteOptions = {
-      registry: 'https://npm.pkg.github.com/',
-      token: TOKEN,
-      cache: node.path.join(a4t1Folder, 'cache'),
-      preferOffline: true,
-    }
-
     const url = await pacote.resolve(`@a4t1/${bundleName}@latest`, pacoteOptions)
 
     console.log(`Download ${bundleName} da ${pacoteOptions.registry}...`)
@@ -133,9 +145,10 @@ async function bootstrapBundle({ name: bundleName, targets, pak3ts }, cwd) {
       const downloadedPak3t = node.path.join(downloadFolder, 'dist', pak3t)
 
       if (node.fs.existsSync(downloadedPak3t)) {
-        node.fs.copyFileSync(downloadedPak3t, node.path.join(targetPath, pak3t))
 
-        console.log(`Pacchetto ${pak3t} aggiornato`)
+        const destinationPath = node.path.join(targetPath, pak3t)
+        node.fs.copyFileSync(downloadedPak3t, destinationPath)
+        console.log(`Pacchetto ${node.path.relative(cwd, destinationPath)} aggiornato`)
       }
 
     }
