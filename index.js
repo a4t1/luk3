@@ -127,14 +127,11 @@ async function confirmExit() {
 async function bootstrapBundle({ name: bundleName, targets, pak3ts }, cwd, pacoteOptions) {
 
   console.log()
-  const mainSpinner = ora(`Verifica bundle ${bundleName}`).start()
-  console.log()
+  const verifica = ora(`Verifica bundle ${bundleName}`).start()
 
   try {
 
     const a4t1Folder = node.path.join(cwd, '.a4t1/')
-
-    const verifica = ora('Verifica dei pacchetti in corso').start()
 
     const targetsToUpdate = []
 
@@ -160,21 +157,27 @@ async function bootstrapBundle({ name: bundleName, targets, pak3ts }, cwd, pacot
 
     }
 
+    verifica.succeed()
+
     if (targetsToUpdate.length > 0) {
 
-      verifica.warn(`Necessario l'aggiornamento dei seguenti pacchetti:`)
+      console.warn(`  Necessario l'aggiornamento dei seguenti pacchetti:`)
       for (const tup of targetsToUpdate) {
-        console.log(`- ${node.path.join(node.path.relative(cwd, tup.targetPath), tup.pak3t)}`)
+        console.warn(`  - ${node.path.join(node.path.relative(cwd, tup.targetPath), tup.pak3t)}`)
       }
 
-      const url = await pacote.resolve(`@a4t1/${bundleName}@latest`, pacoteOptions)
-
-      const spinner = ora(`Download ${bundleName} da ${pacoteOptions.registry}`).start()
-
       const downloadFolder = node.path.join(a4t1Folder, bundleName)
-      await pacote.extract(url, downloadFolder, pacoteOptions)
 
-      spinner.succeed()
+      const download = ora(`Download ${bundleName} da ${pacoteOptions.registry}`).start()
+      try {
+        const url = await pacote.resolve(`@a4t1/${bundleName}@latest`, pacoteOptions)  
+        await pacote.extract(url, downloadFolder, pacoteOptions)  
+        download.succeed()
+      }
+      catch (err) {
+        download.fail(`Download ${bundleName} fallito`)
+        console.error(err)
+      }
 
       for (const { pak3t, targetPath } of targetsToUpdate) {
 
@@ -182,27 +185,26 @@ async function bootstrapBundle({ name: bundleName, targets, pak3ts }, cwd, pacot
 
         const update = ora(`Aggiornamento ${node.path.relative(cwd, destinationPath)}`)
 
-        const downloadedPak3t = node.path.join(downloadFolder, 'dist', pak3t)
-
-        if (node.fs.existsSync(downloadedPak3t)) {
-          node.fs.copyFileSync(downloadedPak3t, destinationPath)
-          update.succeed(`Pacchetto ${node.path.relative(cwd, destinationPath)} aggiornato`)
+        try {
+          const downloadedPak3t = node.path.join(downloadFolder, 'dist', pak3t)  
+          if (node.fs.existsSync(downloadedPak3t)) {
+            node.fs.copyFileSync(downloadedPak3t, destinationPath)
+            update.succeed()
+          }
+          else {
+            update.fail(`Pacchetto ${node.path.relative(cwd, destinationPath)} non trovato`)
+          }
         }
-        else {
-          update.fail(`Pacchetto ${node.path.relative(cwd, destinationPath)} non trovato`)
+        catch(err) {
+          update.fail(`Aggiornamento ${node.path.relative(cwd, destinationPath)} fallito`)
         }
 
       }
     }
-    else {
-      verifica.succeed('Nessun pacchetto da aggiornare')
-    }
-
-    mainSpinner.succeed(`Verifica bundle ${bundleName} completata con successo`)
 
   }
   catch (err) {
-    mainSpinner.fail(`Verifica bundle ${bundleName} fallita`)
+    verifica.fail(`Verifica bundle ${bundleName} fallita`)
     console.error(err)
   }
 
