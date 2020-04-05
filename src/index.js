@@ -79,35 +79,35 @@ async function bootstrap({ token, path, force }) {
       }
     }
 
-    const configFolder = node.path.join(a4t1Folder, 'luk3-config')
-
-    const checkUpdates = ora(`Verifica disponibilità aggiornamenti`).start()
+    const checkUpdatesSpinner = ora(`Verifica disponibilità aggiornamenti`).start()
     try {
       const currentVersion = JSON.parse(node.fs.readFileSync(node.path.join(__dirname, '..', 'package.json'))).version
       const { version: availableVersion } = await pacote.manifest(`@a4t1/luk3@latest`, pacoteOptions)
-      checkUpdates.succeed()
+      checkUpdatesSpinner.succeed()
 
-      if (true || semver.lt(currentVersion, availableVersion)) {        
+      if (semver.lt(currentVersion, availableVersion)) {
         console.log(`
 È disponibile la nuova versione ${availableVersion}.
 Puoi scaricarla da https://github.com/a4t1/luk3/releases`)
       }
     }
     catch (err) {
-      checkUpdates.fail()
+      checkUpdatesSpinner.fail()
       console.error(err)
     }
 
     console.log()
 
-    const downloadConfig = ora(`Download configurazione da ${pacoteOptions.registry}`).start()
+    const configFolder = node.path.join(a4t1Folder, 'luk3-config')
+
+    const downloadConfigSpinner = ora(`Download configurazione da ${pacoteOptions.registry}`).start()
     try {
       const url = await pacote.resolve(`@a4t1/luk3-config@latest`, pacoteOptions)
       await pacote.extract(url, configFolder, pacoteOptions)
-      downloadConfig.succeed()
+      downloadConfigSpinner.succeed()
     }
     catch (err) {
-      downloadConfig.fail()
+      downloadConfigSpinner.fail()
       throw err
     }
 
@@ -151,8 +151,8 @@ async function confirmExit() {
 async function bootstrapBundle({ name: bundleName, targets, pak3ts }, cwd, pacoteOptions) {
 
   console.log()
-  const verifica = ora(`Verifica bundle ${bundleName}`).start()
 
+  const verificaBundleSpinner = ora(`Verifica bundle ${bundleName}`).start()
   try {
 
     const a4t1Folder = node.path.join(cwd, '.a4t1/')
@@ -181,7 +181,7 @@ async function bootstrapBundle({ name: bundleName, targets, pak3ts }, cwd, pacot
 
     }
 
-    verifica.succeed()
+    verificaBundleSpinner.succeed()
 
     if (targetsToUpdate.length > 0) {
 
@@ -192,14 +192,14 @@ async function bootstrapBundle({ name: bundleName, targets, pak3ts }, cwd, pacot
 
       const downloadFolder = node.path.join(a4t1Folder, bundleName)
 
-      const download = ora(`Download ${bundleName} da ${pacoteOptions.registry}`).start()
+      const downloadBundleSpinner = ora(`Download ${bundleName} da ${pacoteOptions.registry}`).start()
       try {
-        const url = await pacote.resolve(`@a4t1/${bundleName}@latest`, pacoteOptions)  
-        await pacote.extract(url, downloadFolder, pacoteOptions)  
-        download.succeed()
+        const url = await pacote.resolve(`@a4t1/${bundleName}@latest`, pacoteOptions)
+        await pacote.extract(url, downloadFolder, pacoteOptions)
+        downloadBundleSpinner.succeed()
       }
       catch (err) {
-        download.fail()
+        downloadBundleSpinner.fail()
         console.error(err)
       }
 
@@ -207,20 +207,20 @@ async function bootstrapBundle({ name: bundleName, targets, pak3ts }, cwd, pacot
 
         const destinationPath = node.path.join(targetPath, pak3t)
 
-        const update = ora(`Aggiornamento ${node.path.relative(cwd, destinationPath)}`)
+        const updatePak3tSpinner = ora(`Aggiornamento ${node.path.relative(cwd, destinationPath)}`)
 
         try {
-          const downloadedPak3t = node.path.join(downloadFolder, 'dist', pak3t)  
+          const downloadedPak3t = node.path.join(downloadFolder, 'dist', pak3t)
           if (node.fs.existsSync(downloadedPak3t)) {
             node.fs.copyFileSync(downloadedPak3t, destinationPath)
-            update.succeed()
+            updatePak3tSpinner.succeed()
           }
           else {
-            update.fail(`Pacchetto ${node.path.relative(cwd, destinationPath)} non trovato`)
+            updatePak3tSpinner.fail(`Pacchetto ${node.path.relative(cwd, destinationPath)} non trovato`)
           }
         }
-        catch(err) {
-          update.fail(`Aggiornamento ${node.path.relative(cwd, destinationPath)} fallito`)
+        catch (err) {
+          updatePak3tSpinner.fail(`Aggiornamento ${node.path.relative(cwd, destinationPath)} fallito`)
         }
 
       }
@@ -228,7 +228,7 @@ async function bootstrapBundle({ name: bundleName, targets, pak3ts }, cwd, pacot
 
   }
   catch (err) {
-    verifica.fail(`Verifica bundle ${bundleName} fallita`)
+    verificaBundleSpinner.fail(`Verifica bundle ${bundleName} fallita`)
     console.error(err)
   }
 

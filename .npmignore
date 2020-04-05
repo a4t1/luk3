@@ -1,3 +1,5 @@
-src
-sandbox
+src/
+.vscode/
+sandbox/
+dist/**/*.zip
 LUK3_TOK3N
