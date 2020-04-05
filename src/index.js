@@ -10,6 +10,7 @@ const hasha = require('hasha')
 const pacote = require('pacote')
 const prompts = require('prompts')
 const ora = require('ora')
+const semver = require('semver')
 
 require('yargs')
   .scriptName('luk3')
@@ -78,16 +79,39 @@ async function bootstrap({ token, path, force }) {
       }
     }
 
-    const url = await pacote.resolve(`@a4t1/luk3-config@latest`, pacoteOptions)
+    const configFolder = node.path.join(a4t1Folder, 'luk3-config')
 
-    const spinner = ora(`Download configurazione da ${pacoteOptions.registry}`).start()
+    const checkUpdates = ora(`Verifica disponibilità aggiornamenti`).start()
+    try {
+      const currentVersion = JSON.parse(node.fs.readFileSync(node.path.join(__dirname, '..', 'package.json'))).version
+      const { version: availableVersion } = await pacote.manifest(`@a4t1/luk3@latest`, pacoteOptions)
+      checkUpdates.succeed()
 
-    const downloadFolder = node.path.join(a4t1Folder, 'luk3-config')
-    await pacote.extract(url, downloadFolder, pacoteOptions)
+      if (true || semver.lt(currentVersion, availableVersion)) {        
+        console.log(`
+È disponibile la nuova versione ${availableVersion}.
+Puoi scaricarla da https://github.com/a4t1/luk3/releases`)
+      }
+    }
+    catch (err) {
+      checkUpdates.fail()
+      console.error(err)
+    }
 
-    spinner.succeed()
+    console.log()
 
-    const configuration = require(node.path.join(downloadFolder, 'config.js'))
+    const downloadConfig = ora(`Download configurazione da ${pacoteOptions.registry}`).start()
+    try {
+      const url = await pacote.resolve(`@a4t1/luk3-config@latest`, pacoteOptions)
+      await pacote.extract(url, configFolder, pacoteOptions)
+      downloadConfig.succeed()
+    }
+    catch (err) {
+      downloadConfig.fail()
+      throw err
+    }
+
+    const configuration = require(node.path.join(configFolder, 'config.js'))
 
     for (const bundle of configuration.bundles) {
       await bootstrapBundle(bundle, cwd, pacoteOptions)
@@ -175,7 +199,7 @@ async function bootstrapBundle({ name: bundleName, targets, pak3ts }, cwd, pacot
         download.succeed()
       }
       catch (err) {
-        download.fail(`Download ${bundleName} fallito`)
+        download.fail()
         console.error(err)
       }
 

@@ -1,9 +1,9 @@
 {
   "name": "@a4t1/luk3",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "description": "Toolchain for A4T1 packs management for MOHAA",
-  "main": "index.js",
-  "bin": "index.js",
+  "main": "src\\index.js",
+  "bin": "src\\index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "pack": "npx pkg . --output dist\\luk3.exe --targets node12-win"
@@ -29,9 +29,13 @@
     "ora": "^4.0.3",
     "pacote": "^11.1.4",
     "prompts": "^2.3.2",
+    "semver": "^7.1.3",
     "yargs": "^15.3.1"
   },
   "devDependencies": {
     "pkg": "^4.4.5"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/"
   }
 }
