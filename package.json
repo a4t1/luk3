@@ -6,7 +6,8 @@
   "bin": "src\\index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "pack": "npx pkg . --output dist\\luk3.exe --targets node12-win"
+    "pack": "npx pkg . --output dist\\luk3.exe --targets node12-win",
+    "prepublishOnly": "npm run pack"
   },
   "repository": {
     "type": "git",
