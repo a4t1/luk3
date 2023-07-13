@@ -30,7 +30,7 @@
     "ora": "^4.0.3",
     "pacote": "^11.1.4",
     "prompts": "^2.3.2",
-    "semver": "^7.1.3",
+    "semver": "^7.5.2",
     "yargs": "^15.3.1"
   },
   "devDependencies": {
